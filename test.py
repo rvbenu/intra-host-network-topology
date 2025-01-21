@@ -1,5 +1,6 @@
 import subprocess
 
+
 # Returns a list containing PCI IDs found in the server. 
 def get_pci_ids():
     command = "grep PCI_ID /sys/bus/pci/devices/*/uevent | cut -d'=' -f2"
