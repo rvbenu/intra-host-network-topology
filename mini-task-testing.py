@@ -37,7 +37,7 @@ def parse_pci_device_name(stdout):
 get_pci_device_name
     Returns the device name of a PCI given its vendor and device ID. 
     Queries locally first. If not found, queries central PCI ID database. 
-     It is recommendable to query the local PCI ID database first 
+    It is recommendable to query the local PCI ID database first 
     to avoid overloading the central PCI ID database servers. 
     If PCI not found, returns "Not found"
 """
