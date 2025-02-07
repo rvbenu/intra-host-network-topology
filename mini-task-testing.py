@@ -3,7 +3,7 @@ import subprocess
 
 """
 get_pci_ids
-    Return list of PCI IDs in the server. 
+    Returns a list of IDs of PCIs found in the server. 
 """
 def get_pci_ids():
     command = "grep PCI_ID /sys/bus/pci/devices/*/uevent | cut -d'=' -f2"
@@ -19,29 +19,41 @@ def get_pci_ids():
 
 
 """
-parse_pci_device_name:
-    Returns the name of the device, next to the 'Device' tag in 'stdout,' as a string. 
-    'stdout' is output corresponding to an 'lspci -vmm -d <pci_id>' call. 
-    Returns 'Not found' if nothing was found next to the 'Device' tag.
+parse_pci_info
+    Returns the PCI vendor and device name as a string separated by a tab. 
+    'stdout' corresponds to an 'lspci -vmm -d <pci_id>' call. 
 """
-def parse_pci_device_name(stdout):
-    """
-    'lspci -vmm -d <pci_id>' generates machine readable output that is consistent 
-    every time. Thus, it is safe to assume line 4 always contains the device name. 
-    """
+def parse_pci_info(stdout):
+    
+    pci_info = {}
     stdout_lines = stdout.splitlines()
-    return stdout_lines[3]
-   
+
+    for line in stdout_lines:
+        if "\t" in line: 
+            # The tag and the value are separated by a single tab character.  
+            tag_value_pair = line.split("\t", 1)
+            tag, value = tag_value_pair
+            # Remove unnecessary white space
+            tag = tag.rstrip(":").strip()
+            value = value.strip()
+
+            pci_info[tag] = value
+
+    pci_vendor = pci_info.get("Vendor", "Not found")
+    pci_device = pci_info.get("Device", "Not found")
+
+    return f"Vendor: {pci_vendor}, \t Device: {pci_device}"
+
 
 """
 get_pci_device_name
-    Returns the device name of a PCI given its vendor and device ID. 
+    Returns the vendor and device name of a PCI given its vendor and device ID. 
     Queries locally first. If not found, queries central PCI ID database. 
     It is recommendable to query the local PCI ID database first 
     to avoid overloading the central PCI ID database servers. 
     If PCI not found, returns "Not found"
 """
-def get_pci_device_name(vendor_id, device_id):
+def get_pci_info(vendor_id, device_id):
     pci_id = f"{vendor_id}:{device_id}"
     
     command_query_local = f"lspci -vmm -d {pci_id}"
@@ -54,8 +66,8 @@ def get_pci_device_name(vendor_id, device_id):
         if not process_query_local_stdout:
             print(f"{pci_id} not found in local database. \n")
         else: 
-            device_name = parse_pci_device_name(process_query_local_stdout)
-            return f"{pci_id}: {device_name}"
+            pci_info = parse_pci_info(process_query_local_stdout)
+            return f"{pci_id}: {pci_info}"
     except subprocess.CalledProcessError as e:
         print(f"Error querying local database: {e} \n")
 
@@ -66,8 +78,8 @@ def get_pci_device_name(vendor_id, device_id):
         if not process_query_central_stdout:
             print(f"{pci_id} not found in central database. \n")
         else:
-            device_name = parse_pci_device_name(process_query_central_stdout)
-            return f"{pci_id}: {device_name}"
+            pci_info = parse_pci_info(process_query_central_stdout)
+            return f"{pci_id}: {pci_info}"
     except subprocess.CalledProcessError as e:
         print(f"Error querying central database: {e} \n")
    
@@ -79,8 +91,8 @@ def main():
     for pci_id in pci_ids:
         vendor_id = pci_id[0:4]
         device_id = pci_id[5:9]
-        device_name = get_pci_device_name(vendor_id, device_id)
-        print(f"{device_name} \n")
+        pci_info = get_pci_info(vendor_id, device_id)
+        print(f"{pci_info} \n")
 
 
 if __name__ == '__main__':
